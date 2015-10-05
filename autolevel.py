@@ -44,7 +44,7 @@ def generate_dungeon(x, y, height, **options):
         rooms.append(Room(x1, y1, x2, y2))
     for i in range(len(rooms), -1, -1):
         for room in rooms[i:]:
-            if intersects(rooms[i], room) and random.randint(0, 20) != 20:
+            if intersects(rooms[i], room) and random.randint(1, 20) != 1:
                 rooms.pop(i)
                 break
     return rooms
@@ -52,10 +52,8 @@ def generate_dungeon(x, y, height, **options):
 
 def intersects(room1, room2):
     """Check whether the two rectangular rooms intersect"""
-    x_int = (((room2.x1 > room1.x1) and (room2.x1 < room1.x2)) or
-             ((room2.x2 > room1.x1) and (room2.x2 < room1.x2)))
-    y_int = (((room2.y1 > room1.y1) and (room2.y1 < room1.y2)) or
-             ((room2.y2 > room1.y1) and (room2.y2 < room1.y2)))
+    x_int = ((room2.x1 < room1.x2) and (room2.x2 > room1.x1))
+    y_int = ((room2.y1 < room1.y2) and (room2.y2 > room1.y1))
     if x_int and y_int:
         return True
     else:
