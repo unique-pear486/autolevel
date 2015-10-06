@@ -10,10 +10,10 @@ class Room(object):
             x1, x2 = x2, x1
         if y2 < y1:
             y1, y2 = y2, y1
-        self.x1 = x1
-        self.y1 = y1
-        self.x2 = x2
-        self.y2 = y2
+        self.x1 = int(x1)
+        self.y1 = int(y1)
+        self.x2 = int(x2)
+        self.y2 = int(y2)
 
     @property
     def centre(self):
@@ -30,6 +30,27 @@ class Room(object):
 
 def generate_dungeon(x, y, height, **options):
     """Generate a dungeon x by y cells, height cells high"""
+    terrain = [[0 for i in range(x)] for j in range(y)]
+    rooms = generate_rooms(x, y)
+    for room in rooms:
+        carve(room, terrain)
+    net = net_from_rooms(rooms, Triangle((0, 0), (0, x+y), (x+y, 0)))
+    for l in net:
+        if (l.p2.x1 < l.p1.x2) and (l.p2.x2 > l.p1.x1):
+            corr_x = random.randint(max(l.p1.x1, l.p2.x1),
+                                    min(l.p1.x2, l.p2.x2))
+            carve(Room(corr_x, l.p1.centre[1], corr_x+1, l.p2.centre[1]),
+                  terrain)
+        elif (l.p2.y1 < l.p1.y2) and (l.p2.y2 > l.p1.y1):
+            corr_y = random.randint(max(l.p1.y1, l.p2.y1),
+                                    min(l.p1.y2, l.p2.y2))
+            carve(Room(l.p1.centre[0], corr_y, l.p2.centre[0], corr_y),
+                  terrain)
+    return terrain
+
+
+def generate_rooms(x, y):
+    """Generate dungeon rooms x by y cells"""
     rooms = []
     for i in range(0, 20):
         added = False
@@ -67,6 +88,12 @@ def intersects(room1, room2):
         return True
     else:
         return False
+
+
+def carve(room, terrain):
+    for i in range(room.x1, room.x2):
+        for j in range(room.y1, room.y2):
+            terrain[i][j] = 1
 
 
 class Triangle(object):
@@ -161,6 +188,23 @@ def net_from_points(points, outer_triangle):
     return net
 
 
+def net_from_rooms(rooms, outer_triangle):
+    net = net_from_points([room.centre for room in rooms], outer_triangle)
+    room_net = []
+    for line in net:
+        r1 = None
+        r2 = None
+        for r in rooms:
+            if r.centre == line.p1:
+                r1 = r
+            if r.centre == line.p2:
+                r2 = r
+        if r1 is None or r2 is None:
+            raise TypeError
+        room_net.append(Line(r1, r2))
+    return room_net
+
+
 if __name__ == "__main__":
     import Image
     import ImageDraw
@@ -172,7 +216,7 @@ if __name__ == "__main__":
 
     a = Image.new("RGBA", (100, 100), (255, 255, 255))
     draw = ImageDraw.Draw(a)
-    rooms = generate_dungeon(100, 100, 3)
+    rooms = generate_rooms(100, 100)
     for room in rooms:
         draw.rectangle(room.coords, outline=(0, 0, 0))
     plot = plt.imshow(a, interpolation="nearest")
@@ -183,4 +227,8 @@ if __name__ == "__main__":
         draw.line((line.p1, line.p2), fill=(255, 0, 0))
     plot = plt.imshow(a, interpolation="nearest")
     plt.draw()
-    time.sleep(10)
+    time.sleep(5)
+    terr = generate_dungeon(100, 100, 3)
+    plt.imshow(terr)
+    plt.draw()
+    time.sleep(5)
