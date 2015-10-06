@@ -1,4 +1,5 @@
 from __future__ import division
+import math
 import random
 
 
@@ -16,7 +17,7 @@ class Room(object):
 
     @property
     def centre(self):
-        return [(self.x1 + self.x2)/2, (self.y1 + sefl.y2)/2]
+        return ((self.x1 + self.x2)/2, (self.y1 + self.y2)/2)
 
     @property
     def area(self):
@@ -68,6 +69,98 @@ def intersects(room1, room2):
         return False
 
 
+class Triangle(object):
+    def __init__(self, p1, p2, p3):
+        self.p1 = p1
+        self.p2 = p2
+        self.p3 = p3
+        self.circumcircle = self._circumcircle()
+
+    def __iter__(self):
+        line1 = Line(self.p1, self.p2)
+        line2 = Line(self.p2, self.p3)
+        line3 = Line(self.p3, self.p1)
+        return iter([line1, line2, line3])
+
+    def in_circumcircle(self, point):
+        """Determine if a point is in the triangle's circumcircle"""
+        x, y = point
+        (cx, cy), cr = self.circumcircle
+        r2 = (x - cx)**2 + (y - cy)**2
+        if r2 < cr**2:
+            return True
+        return False
+
+    def _circumcircle(self):
+        """Return the circumcircle centre and radius"""
+        ax, ay = self.p1
+        bx, by = self.p2
+        cx, cy = self.p3
+        d = (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by)) * 2
+        x = ((ax**2 + ay**2)*(by - cy) +
+             (bx**2 + by**2)*(cy - ay) +
+             (cx**2 + cy**2)*(ay - by)) / d
+        y = ((ay**2 + ax**2)*(cx - bx) +
+             (by**2 + bx**2)*(ax - cx) +
+             (cy**2 + cx**2)*(bx - ax)) / d
+        r = math.sqrt((x - ax)**2 + (y - ay)**2)
+        return ((x, y), r)
+
+
+class Line(object):
+    def __init__(self, p1, p2):
+        self.p1 = p1
+        self.p2 = p2
+        self.__hash = None
+
+    def __eq__(self, other):
+        if (self.p1 == other.p1 and self.p2 == other.p2 or
+                self.p2 == other.p1 and self.p1 == other.p2):
+            return True
+        return False
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        if self.__hash is None:
+            try:
+                self.__hash = hash(self.p1) ^ hash(self.p2)
+            except TypeError:
+                print(self.p1, self.p2)
+                raise
+        return self.__hash
+
+
+def net_from_points(points, outer_triangle):
+    """Generates a net of connections from a list of points"""
+    i_points = points[:]
+    triangles = [outer_triangle]
+    while i_points:
+        point = i_points.pop(random.randint(0, len(i_points) - 1))
+        rebuild_triangles = []
+        for tri in triangles:
+            if tri.in_circumcircle(point):
+                rebuild_triangles.append(tri)
+        polygon = set([])
+        for i, tri in enumerate(rebuild_triangles):
+            for line in tri:
+                if sum([line in tri2 for tri2 in rebuild_triangles]) > 1:
+                    continue
+                polygon.add(line)
+            triangles.remove(tri)
+        for line in polygon:
+            triangles.append(Triangle(line.p1, line.p2, point))
+    net = set([])
+    outer_points = [outer_triangle.p1, outer_triangle.p2, outer_triangle.p3]
+    for tri in triangles:
+        for l in tri:
+            if l.p1 in outer_points or l.p2 in outer_points:
+                continue
+            net.add(l)
+    return net
+
+
 if __name__ == "__main__":
     import Image
     import ImageDraw
@@ -82,6 +175,12 @@ if __name__ == "__main__":
     rooms = generate_dungeon(100, 100, 3)
     for room in rooms:
         draw.rectangle(room.coords, outline=(0, 0, 0))
+    plot = plt.imshow(a, interpolation="nearest")
+    plt.draw()
+    points = [room.centre for room in rooms]
+    net = net_from_points(points, Triangle((0, 0), (600, 0), (0, 600)))
+    for line in net:
+        draw.line((line.p1, line.p2), fill=(255, 0, 0))
     plot = plt.imshow(a, interpolation="nearest")
     plt.draw()
     time.sleep(10)
