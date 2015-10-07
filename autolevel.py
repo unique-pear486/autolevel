@@ -32,8 +32,11 @@ def generate_dungeon(x, y, height, **options):
     """Generate a dungeon x by y cells, height cells high"""
     terrain = [[0 for i in range(x)] for j in range(y)]
     rooms = generate_rooms(x, y)
+    yield rooms
     for room in rooms:
         carve(room, terrain)
+    yield net_from_points([r.centre for r in rooms],
+                          Triangle((0, 0), (0, x+y), (x+y, 0)))
     net = net_from_rooms(rooms, Triangle((0, 0), (0, x+y), (x+y, 0)))
     for l in net:
         if (l.p2.x1 < l.p1.x2) and (l.p2.x2 > l.p1.x1):
@@ -46,7 +49,7 @@ def generate_dungeon(x, y, height, **options):
                                     min(l.p1.y2, l.p2.y2))
             carve(Room(l.p1.centre[0], corr_y, l.p2.centre[0], corr_y),
                   terrain)
-    return terrain
+    yield terrain
 
 
 def generate_rooms(x, y):
@@ -93,7 +96,7 @@ def intersects(room1, room2):
 def carve(room, terrain):
     for i in range(room.x1, room.x2):
         for j in range(room.y1, room.y2):
-            terrain[i][j] = 1
+            terrain[j][i] = 1
 
 
 class Triangle(object):
@@ -210,25 +213,25 @@ if __name__ == "__main__":
     import ImageDraw
     import matplotlib.pyplot as plt
     import matplotlib.image as mpimage
+    import matplotlib.cm as cm
     import time
     plt.ion()
     plt.show()
 
+    # full procedure
+    gen_dun = generate_dungeon(100, 100, 3)
+    rooms = gen_dun.send(None)
+    net = gen_dun.send(None)
     a = Image.new("RGBA", (100, 100), (255, 255, 255))
     draw = ImageDraw.Draw(a)
-    rooms = generate_rooms(100, 100)
     for room in rooms:
         draw.rectangle(room.coords, outline=(0, 0, 0))
-    plot = plt.imshow(a, interpolation="nearest")
-    plt.draw()
-    points = [room.centre for room in rooms]
-    net = net_from_points(points, Triangle((0, 0), (600, 0), (0, 600)))
     for line in net:
         draw.line((line.p1, line.p2), fill=(255, 0, 0))
-    plot = plt.imshow(a, interpolation="nearest")
+    plt.imshow(a, interpolation="nearest")
     plt.draw()
     time.sleep(5)
-    terr = generate_dungeon(100, 100, 3)
-    plt.imshow(terr)
+    terr = gen_dun.send(None)
+    plt.imshow(terr, interpolation="nearest", cmap=cm.gray, origin="lower")
     plt.draw()
     time.sleep(5)
