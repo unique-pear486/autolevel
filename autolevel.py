@@ -47,7 +47,14 @@ def generate_dungeon(x, y, height, **options):
         elif (l.p2.y1 < l.p1.y2) and (l.p2.y2 > l.p1.y1):
             corr_y = random.randint(max(l.p1.y1, l.p2.y1),
                                     min(l.p1.y2, l.p2.y2))
-            carve(Room(l.p1.centre[0], corr_y, l.p2.centre[0], corr_y),
+            carve(Room(l.p1.centre[0], corr_y, l.p2.centre[0], corr_y+1),
+                  terrain)
+        else:
+            corr_x = random.randint(l.p1.x1, l.p1.x2)
+            corr_y = random.randint(l.p2.y1, l.p2.y2)
+            carve(Room(corr_x, l.p1.centre[1], (corr_x + 1), corr_y+1),
+                  terrain)
+            carve(Room(corr_x, corr_y, l.p2.centre[0], (corr_y + 1)),
                   terrain)
     yield terrain
 
@@ -85,18 +92,18 @@ def generate_rooms(x, y):
 
 def intersects(room1, room2):
     """Check whether the two rectangular rooms intersect"""
-    x_int = ((room2.x1 < room1.x2) and (room2.x2 > room1.x1))
-    y_int = ((room2.y1 < room1.y2) and (room2.y2 > room1.y1))
+    x_int = ((room2.x1 < room1.x2 + 1) and (room2.x2 + 1 > room1.x1))
+    y_int = ((room2.y1 < room1.y2 + 1) and (room2.y2 + 1 > room1.y1))
     if x_int and y_int:
         return True
     else:
         return False
 
 
-def carve(room, terrain):
+def carve(room, terrain, n=1):
     for i in range(room.x1, room.x2):
         for j in range(room.y1, room.y2):
-            terrain[j][i] = 1
+            terrain[j][i] = n
 
 
 class Triangle(object):
@@ -217,7 +224,6 @@ if __name__ == "__main__":
     import time
     plt.ion()
     plt.show()
-
     # full procedure
     gen_dun = generate_dungeon(100, 100, 3)
     rooms = gen_dun.send(None)
@@ -230,7 +236,7 @@ if __name__ == "__main__":
         draw.line((line.p1, line.p2), fill=(255, 0, 0))
     plt.imshow(a, interpolation="nearest")
     plt.draw()
-    time.sleep(5)
+    time.sleep(1)
     terr = gen_dun.send(None)
     plt.imshow(terr, interpolation="nearest", cmap=cm.gray, origin="lower")
     plt.draw()
