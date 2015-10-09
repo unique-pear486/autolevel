@@ -1,6 +1,7 @@
 from __future__ import division
 import math
 import random
+import numpy as np
 
 
 class Room(object):
@@ -30,7 +31,7 @@ class Room(object):
 
 def generate_dungeon(x, y, height, **options):
     """Generate a dungeon x by y cells, height cells high"""
-    terrain = [[0 for i in range(x)] for j in range(y)]
+    terrain = np.zeros([x, y], dtype=int)
     rooms = generate_rooms(x, y)
     yield rooms
     for room in rooms:
@@ -57,6 +58,13 @@ def generate_dungeon(x, y, height, **options):
             carve(Room(corr_x, corr_y, l.p2.centre[0], (corr_y + 1)),
                   terrain)
     yield terrain
+    # terr_temp = np.zeros([x+2, y+2], dtype=int)
+    # terr_temp[1:-1, 1:-1] = terrain
+    N_walls = np.logical_and(terrain == 0, np.roll(terrain, 1, 0) > 0)
+    S_walls = np.logical_and(terrain == 0, np.roll(terrain, -1, 0) > 0)
+    E_walls = np.logical_and(terrain == 0, np.roll(terrain, 1, 1) > 0)
+    W_walls = np.logical_and(terrain == 0, np.roll(terrain, -1, 1) > 0)
+    yield terrain + 2*N_walls + 2*S_walls + 2*E_walls + 2*W_walls
 
 
 def generate_rooms(x, y):
@@ -67,10 +75,10 @@ def generate_rooms(x, y):
         i = 0
         while added is False and i < 100:
             i += 1
-            x1 = random.randint(0, x)
-            x2 = random.randint(0, x)
-            y1 = random.randint(0, y)
-            y2 = random.randint(0, y)
+            x1 = random.randint(1, x-1)
+            x2 = random.randint(1, x-1)
+            y1 = random.randint(1, y-1)
+            y2 = random.randint(1, y-1)
             if abs(x1 - x2) < 4:
                 continue
             if abs(y1 - y2) < 4:
@@ -239,5 +247,9 @@ if __name__ == "__main__":
     time.sleep(1)
     terr = gen_dun.send(None)
     plt.imshow(terr, interpolation="nearest", cmap=cm.gray, origin="lower")
+    plt.draw()
+    time.sleep(2)
+    terr2 = gen_dun.send(None)
+    plt.imshow(terr2, interpolation="nearest", cmap=cm.gray, origin="lower")
     plt.draw()
     time.sleep(5)
