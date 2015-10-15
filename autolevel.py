@@ -67,10 +67,10 @@ def generate_rooms(x, y, tries):
     rooms = []
     maxsize = min(x, y) // 2
     for i in range(0, tries):
-        x1 = random.randint(1, x // 2)*2 + 1
-        y1 = random.randint(1, y // 2)*2 + 1
-        width = int(random.random()**2 * maxsize) + 4
-        height = int(random.random()**2 * maxsize) + 4
+        x1 = random.randint(1, x // 2)*2 + 1    # needs to be odd
+        y1 = random.randint(1, y // 2)*2 + 1    # needs to be odd
+        width = int(random.random()**2 * maxsize) * 2 + 3
+        height = int(random.random()**2 * maxsize) * 2 + 3
         ratio = abs(width / height)
         if ratio < 0.1 or ratio > 10:
             continue
@@ -106,6 +106,11 @@ def carve(area, terrain, n=1):
 
 
 def grow_maze(terrain, start, region):
+    import matplotlib.pyplot as plt
+    import time
+    plt.ion()
+    im = plt.imshow(terrain, interpolation="nearest", vmin=0, vmax=1)
+    plt.draw()
     cells = [start]
     previous_direction = random.sample(DIRECTIONS, 1)[0]
     while cells:
@@ -126,6 +131,8 @@ def grow_maze(terrain, start, region):
             carve(cell + direction, terrain, region)
             carve(cell + direction*2, terrain, region)
             cells.append(cell + direction*2)
+            im.set_array(terrain)
+            plt.draw()
         else:
             cells.pop()
     return terrain
@@ -216,9 +223,11 @@ if __name__ == "__main__":
     plt.ion()
     plt.show()
     # full procedure
-    gen_dun = generate_dungeon(21, 21, 3, 200)
+    X = 21
+    Y = 21
+    gen_dun = generate_dungeon(X, Y, 3, 200)
     rooms = gen_dun.send(None)
-    a = Image.new("RGBA", (100, 100), (255, 255, 255))
+    a = Image.new("RGBA", (X, Y), (255, 255, 255))
     draw = ImageDraw.Draw(a)
     for room in rooms:
         draw.rectangle(room.coords, outline=(0, 0, 0))
