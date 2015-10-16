@@ -53,3 +53,75 @@ def get_tile(source, size, location):
            (location[0] + 1) * size[0],
            (location[1] + 1) * size[1],)
     return source.crop(box)
+
+
+class Terrain(object):
+    def __init__(self, x, y):
+        self._tiles = []
+        for i in range(x):
+            self._tiles.append([])
+            for j in range(y):
+                self._tiles[-1].append(Tile(self, x=i, y=j, i=0))
+
+    def __getitem__(self, pos):
+        try:
+            return self._tiles[pos[0]][pos[1]]
+        except TypeError:
+            return self._tiles[pos]
+        else:
+            raise TypeError("Index must be integer or 2-tuple")
+
+    def __repr__(self):
+        string = "["
+        for i in self._tiles:
+            string += "["
+            string += ", ".join([str(j) for j in i])
+            string += "]\n"
+        string += "]"
+        return string
+
+
+class Tile(object):
+
+    def __init__(self, terrain, x, y, i=0):
+        self._terrain = terrain
+        self.x = x
+        self.y = y
+        self.i = 0
+
+    def __repr__(self):
+        return "Tile(x={}, y={}, i={})".format(self.x,
+                                               self.y,
+                                               self.i)
+
+    def __str__(self):
+        return str(self.i)
+
+    def n(self):
+        if self.y == 0:
+            return self
+        return self._terrain[self.x][self.y - 1]
+
+    def e(self):
+        if self.x + 1 == len(self._terrain):
+            return self
+        return self._terrain[self.x + 1][self.y]
+
+    def s(self):
+        if self.y + 1 == len(self._terrain[0]):
+            return self
+        return self._terrain[self.x][self.y + 1]
+
+    def w(self):
+        if self.x == 0:
+            return self
+        return self._terrain[self.x - 1][self.y]
+
+
+def render_minitile(terrain, tileset):
+    pass
+
+
+terr = Terrain(5, 5)
+print(terr)
+print(repr(terr[3, 4].n()))
