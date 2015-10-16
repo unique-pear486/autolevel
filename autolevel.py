@@ -3,6 +3,8 @@ import math
 import random
 import numpy as np
 
+from render import render_terrain
+
 
 class Room(object):
     """A room object. Occupys cells x1 to x2-1, y1 to y2-1"""
@@ -60,11 +62,11 @@ def generate_dungeon(x, y, height, **options):
     yield terrain
     # terr_temp = np.zeros([x+2, y+2], dtype=int)
     # terr_temp[1:-1, 1:-1] = terrain
-    N_walls = np.logical_and(terrain == 0, np.roll(terrain, 1, 0) > 0)
-    S_walls = np.logical_and(terrain == 0, np.roll(terrain, -1, 0) > 0)
-    E_walls = np.logical_and(terrain == 0, np.roll(terrain, 1, 1) > 0)
-    W_walls = np.logical_and(terrain == 0, np.roll(terrain, -1, 1) > 0)
-    yield terrain + 2*N_walls + 2*S_walls + 2*E_walls + 2*W_walls
+    N_walls = np.logical_and(terrain == 0, np.roll(terrain, -1, 1) > 0)
+    S_walls = np.logical_and(terrain == 0, np.roll(terrain, 1, 1) > 0)
+    E_walls = np.logical_and(terrain == 0, np.roll(terrain, -1, 0) > 0)
+    W_walls = np.logical_and(terrain == 0, np.roll(terrain, 1, 0) > 0)
+    yield terrain + 2*N_walls + 4*S_walls + 8*E_walls + 16*W_walls
 
 
 def generate_rooms(x, y):
@@ -111,7 +113,7 @@ def intersects(room1, room2):
 def carve(room, terrain, n=1):
     for i in range(room.x1, room.x2):
         for j in range(room.y1, room.y2):
-            terrain[j][i] = n
+            terrain[i][j] = n
 
 
 class Triangle(object):
@@ -227,16 +229,15 @@ if __name__ == "__main__":
     import Image
     import ImageDraw
     import matplotlib.pyplot as plt
-    import matplotlib.image as mpimage
     import matplotlib.cm as cm
     import time
     plt.ion()
     plt.show()
     # full procedure
-    gen_dun = generate_dungeon(100, 100, 3)
+    gen_dun = generate_dungeon(40, 50, 3)
     rooms = gen_dun.send(None)
     net = gen_dun.send(None)
-    a = Image.new("RGBA", (100, 100), (255, 255, 255))
+    a = Image.new("RGBA", (40, 50), (255, 255, 255))
     draw = ImageDraw.Draw(a)
     for room in rooms:
         draw.rectangle(room.coords, outline=(0, 0, 0))
@@ -246,10 +247,14 @@ if __name__ == "__main__":
     plt.draw()
     time.sleep(1)
     terr = gen_dun.send(None)
-    plt.imshow(terr, interpolation="nearest", cmap=cm.gray, origin="lower")
+    plt.imshow(np.swapaxes(terr, 0, 1), interpolation="nearest", cmap=cm.gray,
+               origin="upper")
     plt.draw()
-    time.sleep(2)
+    time.sleep(1)
     terr2 = gen_dun.send(None)
-    plt.imshow(terr2, interpolation="nearest", cmap=cm.gray, origin="lower")
+    plt.imshow(np.swapaxes(terr2, 0, 1), interpolation="nearest", cmap=cm.gray,
+               origin="upper")
     plt.draw()
-    time.sleep(5)
+    time.sleep(1)
+    im2 = render_terrain(terr2, "Dungeonset1")
+    im2.show()

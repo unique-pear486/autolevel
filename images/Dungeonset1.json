@@ -1,0 +1,12 @@
+{
+  "name": "DungeonSet 1",
+  "source": "http://rpgmcommunity.forumotion.com/t63-valkyrie-stories-tileset",
+  "file": "Dungeonset1.png",
+  "size": [32,32],
+  "ground": [[6,3]],
+  "N_wall": [[1,6]],
+  "S_wall": [[1,2]],
+  "E_wall": [[2,3]],
+  "W_wall": [[0,3]]
+}
+
