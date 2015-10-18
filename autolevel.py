@@ -10,6 +10,9 @@ DIRECTIONS = (np.array((0, 1)),
               np.array((-1, 0)))     # Cardinal directions
 WINDINGNESS = 20        # 1/WINDINESS chance of turning without being forced
 EXTRA_CONNECTIONS = 20  # 1/EXTRA_CONNECTIONS chance of extra carved connection
+X = 21
+Y = 21
+ATTEMPTS = 200
 
 
 class Room(object):
@@ -55,6 +58,9 @@ def generate_dungeon(x, y, height, attempts, **options):
                 region += 1
     yield terrain
     connect_regions(terrain, region + 1)
+    yield terrain
+    trim_paths(terrain)
+    yield terrain
 
 
 def generate_rooms(x, y, tries):
@@ -102,7 +108,6 @@ def carve(area, terrain, n=1):
 
 def grow_maze(terrain, start, region):
     import matplotlib.pyplot as plt
-    import time
     plt.ion()
     im = plt.imshow(terrain, interpolation="nearest", vmin=0, vmax=1,
                     origin="lower")
@@ -156,7 +161,7 @@ def connect_regions(terrain, total_regions):
                 continue    # If not a wall, can't connect regions
             regions = set([])
             for direction in DIRECTIONS:
-                region = terrain[(i, j) + direction]
+                region = terrain[tuple((i, j) + direction)]
                 if region != 0:
                     regions.add(region)
 
@@ -171,27 +176,53 @@ def connect_regions(terrain, total_regions):
     merged = range(0, total_regions)
     open_regions = range(1, total_regions)
 
-    while open_regions:
+    while open_regions and connectors:
         connector = random.choice(connectors)
         carve(connector[0], terrain)
 
         # Choose one region to the the source, map every other region to it
         source = connector[1].pop()
         for dest in connector[1]:
-            dest = merged[dest]
+            d = merged[dest]
             for i, region in enumerate(merged):
-                if region == dest:
-                    merged[i] = source
-            open_regions.remove(dest)
+                if region == d:
+                    merged[i] = merged[source]
+            open_regions.remove(d)
 
         # Remove connectors that are now useless
         for connector in connectors[:]:
-            regions = set([merged(i) for i in connect[1]])
+            regions = set([merged[i] for i in connector[1]])
             if len(regions) < 2:
                 connectors.remove(connector)
                 # Have a small chance of carving the connector anyway
-                if random.Random() < 1/EXTRA_CONNECTIONS:
+                if random.random() < 1/EXTRA_CONNECTIONS:
                     carve(connector[0], terrain)
+
+
+def trim_paths(terrain):
+    deadends = []
+    for i in range(1, len(terrain) - 1):
+        for j in range(1, len(terrain[0]) - 1):
+            if is_deadend(i, j, terrain):
+                deadends.append((i, j))
+    while deadends:
+        deadend = deadends.pop()
+        terrain[deadend] = 0
+        for direction in DIRECTIONS:
+            i = (deadend + direction)[0]
+            j = (deadend + direction)[1]
+            if is_deadend(i, j, terrain):
+                deadends.append((i, j))
+
+
+def is_deadend(x, y, terrain):
+    if terrain[(x, y)] == 0:
+        return False
+    paths = [terrain[tuple((x, y) + direc)] for direc in DIRECTIONS]
+    count = sum([path == 0 for path in paths])
+    if count == 3:
+        return True
+    return False
 
 
 class Triangle(object):
@@ -257,19 +288,16 @@ class Line(object):
         return self.__hash
 
 
-if __name__ == "__main__":
+def main():
     import Image
     import ImageDraw
     import matplotlib.pyplot as plt
-    import matplotlib.image as mpimage
     import matplotlib.cm as cm
     import time
     plt.ion()
     plt.show()
     # full procedure
-    X = 21
-    Y = 21
-    gen_dun = generate_dungeon(X, Y, 3, 200)
+    gen_dun = generate_dungeon(X, Y, 3, ATTEMPTS)
     rooms = gen_dun.send(None)
     a = Image.new("RGBA", (X, Y), (255, 255, 255))
     draw = ImageDraw.Draw(a)
@@ -282,8 +310,17 @@ if __name__ == "__main__":
     plt.imshow(terr, interpolation="nearest", cmap=cm.gray, origin="lower",
                vmin=0, vmax=1)
     plt.draw()
-    time.sleep(5)
+    time.sleep(3)
     terr2 = gen_dun.send(None)
-    plt.imshow(terr2, interpolation="nearest", cmap=cm.gray, origin="lower")
+    plt.imshow(terr2, interpolation="nearest", cmap=cm.gray, origin="lower",
+               vmin=0, vmax=1)
+    plt.draw()
+    time.sleep(3)
+    terr3 = gen_dun.send(None)
+    plt.imshow(terr3, interpolation="nearest", cmap=cm.gray, origin="lower",
+               vmin=0, vmax=1)
     plt.draw()
     time.sleep(5)
+
+if __name__ == "__main__":
+    main()
