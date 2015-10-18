@@ -113,6 +113,7 @@ def grow_maze(terrain, start, region):
                     origin="lower")
     plt.draw()
     cells = [start]
+    carve(start, terrain, region)
     previous_direction = random.choice(DIRECTIONS)
     while cells:
         cell = cells[-1]
