@@ -9,6 +9,7 @@ DIRECTIONS = (np.array((0, 1)),
               np.array((0, -1)),
               np.array((-1, 0)))     # Cardinal directions
 WINDINGNESS = 20        # 1/WINDINESS chance of turning without being forced
+EXTRA_CONNECTIONS = 20  # 1/EXTRA_CONNECTIONS chance of extra carved connection
 
 
 class Room(object):
@@ -53,13 +54,7 @@ def generate_dungeon(x, y, height, attempts, **options):
                 grow_maze(terrain, (i, j), region)
                 region += 1
     yield terrain
-    # terr_temp = np.zeros([x+2, y+2], dtype=int)
-    # terr_temp[1:-1, 1:-1] = terrain
-    N_walls = np.logical_and(terrain == 0, np.roll(terrain, 1, 0) > 0)
-    S_walls = np.logical_and(terrain == 0, np.roll(terrain, -1, 0) > 0)
-    E_walls = np.logical_and(terrain == 0, np.roll(terrain, 1, 1) > 0)
-    W_walls = np.logical_and(terrain == 0, np.roll(terrain, -1, 1) > 0)
-    yield terrain + 2*N_walls + 2*S_walls + 2*E_walls + 2*W_walls
+    connect_regions(terrain, region + 1)
 
 
 def generate_rooms(x, y, tries):
@@ -109,10 +104,11 @@ def grow_maze(terrain, start, region):
     import matplotlib.pyplot as plt
     import time
     plt.ion()
-    im = plt.imshow(terrain, interpolation="nearest", vmin=0, vmax=1)
+    im = plt.imshow(terrain, interpolation="nearest", vmin=0, vmax=1,
+                    origin="lower")
     plt.draw()
     cells = [start]
-    previous_direction = random.sample(DIRECTIONS, 1)[0]
+    previous_direction = random.choice(DIRECTIONS)
     while cells:
         cell = cells[-1]
         open_cells = []
@@ -127,7 +123,7 @@ def grow_maze(terrain, start, region):
                     random.random() > 1/WINDINGNESS):   # tuple for np wierdnes
                 direction = previous_direction
             else:
-                direction = random.sample(open_cells, 1)[0]
+                direction = random.choice(open_cells)
             carve(cell + direction, terrain, region)
             carve(cell + direction*2, terrain, region)
             cells.append(cell + direction*2)
@@ -148,6 +144,54 @@ def can_carve(cell, direction, terrain):
     if terrain[tuple(cell + direction*2)] == 0:
         return True
     return False
+
+
+def connect_regions(terrain, total_regions):
+    """Take a terrain map and join all regions in it"""
+    # Find all possible connectors between regions
+    connectors = []
+    for i in range(1, terrain.shape[0]-1):
+        for j in range(1, terrain.shape[1]-1):
+            if terrain[i, j] != 0:
+                continue    # If not a wall, can't connect regions
+            regions = set([])
+            for direction in DIRECTIONS:
+                region = terrain[(i, j) + direction]
+                if region != 0:
+                    regions.add(region)
+
+            if len(regions) < 2:
+                continue    # Only connects to one region, not a connector
+
+            connectors.append([[i, j], regions])
+
+    # Keep track of merged regions, maps the original index to the new one it
+    # has been merged with. i.e.
+    # merged[original region] = joined_region
+    merged = range(0, total_regions)
+    open_regions = range(1, total_regions)
+
+    while open_regions:
+        connector = random.choice(connectors)
+        carve(connector[0], terrain)
+
+        # Choose one region to the the source, map every other region to it
+        source = connector[1].pop()
+        for dest in connector[1]:
+            dest = merged[dest]
+            for i, region in enumerate(merged):
+                if region == dest:
+                    merged[i] = source
+            open_regions.remove(dest)
+
+        # Remove connectors that are now useless
+        for connector in connectors[:]:
+            regions = set([merged(i) for i in connect[1]])
+            if len(regions) < 2:
+                connectors.remove(connector)
+                # Have a small chance of carving the connector anyway
+                if random.Random() < 1/EXTRA_CONNECTIONS:
+                    carve(connector[0], terrain)
 
 
 class Triangle(object):
