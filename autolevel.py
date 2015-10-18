@@ -129,6 +129,7 @@ def grow_maze(terrain, start, region):
                 direction = previous_direction
             else:
                 direction = random.choice(open_cells)
+            previous_direction = direction
             carve(cell + direction, terrain, region)
             carve(cell + direction*2, terrain, region)
             cells.append(cell + direction*2)
