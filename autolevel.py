@@ -45,7 +45,7 @@ def generate_dungeon(x, y, height, attempts, **options):
     if (x % 2 != 1) or (y % 2 != 1):
         yield ValueError("Sizes must be odd")
     terrain = np.zeros([x, y], dtype=int)
-    rooms = generate_rooms(x, y, 200)
+    rooms = generate_rooms(x, y, attempts, height)
     yield rooms
     region = 1
     for room in rooms:
@@ -63,7 +63,7 @@ def generate_dungeon(x, y, height, attempts, **options):
     yield terrain
 
 
-def generate_rooms(x, y, tries):
+def generate_rooms(x, y, tries, h):
     """Generate dungeon rooms x by y cells"""
     rooms = []
     maxsize = min(x, y) // 2
@@ -80,17 +80,19 @@ def generate_rooms(x, y, tries):
         if x2 >= x or y2 >= y:
             continue
         room = Room(x1, y1, x2, y2)
-        if any(intersects(room, r) for r in rooms):
+        if any(intersects(room, r, h) for r in rooms):
             continue
         else:
             rooms.append(room)
     return rooms
 
 
-def intersects(room1, room2):
+def intersects(room1, room2, height):
     """Check whether the two rectangular rooms intersect"""
-    x_int = ((room2.x1 < room1.x2 + 1) and (room2.x2 + 1 > room1.x1))
-    y_int = ((room2.y1 < room1.y2 + 1) and (room2.y2 + 1 > room1.y1))
+    x_int = ((room2.x1 < room1.x2 + 1 + height) and
+             (room2.x2 + 1 + height > room1.x1))
+    y_int = ((room2.y1 < room1.y2 + 1) and
+             (room2.y2 + 1 > room1.y1))
     if x_int and y_int:
         return True
     else:
@@ -113,6 +115,8 @@ def grow_maze(terrain, start, region):
                     origin="lower")
     plt.draw()
     cells = [start]
+    if not can_carve(start, np.array((0, 0)), terrain):
+        return
     carve(start, terrain, region)
     previous_direction = random.choice(DIRECTIONS)
     while cells:
@@ -143,10 +147,14 @@ def grow_maze(terrain, start, region):
 
 def can_carve(cell, direction, terrain):
     """Check if there are any walls or the boundary in the way"""
-    (x, y) = cell + direction*3
+    (x, y) = cell + direction*3 + (2, 0)
     if x < 0 or x >= terrain.shape[0]:
         return False
     if y < 0 or y >= terrain.shape[1]:
+        return False
+    if terrain[tuple(cell + direction + (2, 0))] != 0:
+        return False
+    if terrain[tuple(cell + direction*2 + (2, 0))] != 0:
         return False
     if terrain[tuple(cell + direction*2)] == 0:
         return True
